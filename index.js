@@ -87,7 +87,7 @@ io.on("connection", (socket) => {
         { name: lobby, 'users.username': username },
         { $set: { 'users.$.isReady': false } },
         { new: true }
-      );
+      ).populate('problems');
 
       socket.emit('successful_ready', { isReady: false });
       io.to(lobby).emit('user_ready', savedLobby);
