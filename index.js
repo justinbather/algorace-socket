@@ -2,16 +2,16 @@ const socketIo = require("socket.io");
 const http = require('http');
 const Lobby = require("./schema/LobbySchema");
 const Problem = require("./schema/ProblemSchema")
-const User = require('./schema/UserSchema')
+const User = require("./schema/UserSchema")
 const express = require('express')
 const app = express();
-const PORT = process.env.PORT || 8000
 const ProblemCode = require('./schema/ProblemCodeSchema')
 const connectDB = require('./config/db')
 
 connectDB()
 const socketServer = http.createServer(app);
 
+const PORT = process.env.PORT || 8000
 const SOCKET_ORIGIN = process.env.SOCKET_ORIGIN || `http://localhost:3000`
 
 const io = socketIo(socketServer, {
@@ -20,32 +20,21 @@ const io = socketIo(socketServer, {
   },
 });
 
-
-const checkAllReady = (lobbyObj) => {
-  let output = true
-  lobbyObj.users.forEach(user => {
-    if (!user.isReady) {
-      output = false
-    }
-
-  });
-  return output
-}
-
-
 io.on("connection", (socket) => {
 
   socket.on("join_lobby", async (data) => {
     const { username, lobby } = data;
 
     try {
+      //Only update lobby with the user if user doesn't exist in lobby already
       const result = await Lobby.findOneAndUpdate(
-        { name: lobby, 'users.username': { $ne: username } }, // Ensure username is not in the array
+        { name: lobby, 'users.username': { $ne: username } },
         { $addToSet: { users: { username, isReady: false } } },
         { new: true }
       ).populate('problems').exec();
 
       if (result) {
+        //add socket to lobby with lobby name
         socket.join(result.name);
         socket.emit('successful_enter', result);
         io.emit('user_joined', result);
@@ -59,18 +48,22 @@ io.on("connection", (socket) => {
     const { username, lobby } = data;
 
     try {
+      //Update given users isReady to true returning newly saved lobby object
       const savedLobby = await Lobby.findOneAndUpdate(
         { name: lobby, 'users.username': username },
         { $set: { 'users.$.isReady': true } },
         { new: true }
       ).populate('problems').exec();
 
-      if (savedLobby.users.every((user) => user.isReady === true) && savedLobby.started) {
-        savedLobby.roundNumber = savedLobby.roundNumber + 1
-        const updatedLobbyRound = await savedLobby.save()
-        const currentProblem = await ProblemCode.findOne({ title: savedLobby.problems[updatedLobbyRound.roundNumber].title, language: 'javascript' })
-        io.to(lobby).emit('new_round', { lobbyObj: updatedLobbyRound, roundNumber: savedLobby.roundNumber, currentProblem })
-      }
+      // For use between rounds
+      // Sets user status to ready
+      // if all users are ready we increase current round number and return new problem
+      //      if (savedLobby.users.every((user) => user.isReady === true) && savedLobby.started) {
+      //        savedLobby.roundNumber = savedLobby.roundNumber + 1
+      //        const updatedLobbyRound = await savedLobby.save()
+      //        const currentProblem = await ProblemCode.findOne({ title: savedLobby.problems[updatedLobbyRound.roundNumber].title, language: 'javascript' })
+      //        io.to(lobby).emit('new_round', { lobbyObj: updatedLobbyRound, roundNumber: savedLobby.roundNumber, currentProblem })
+      //      }
       socket.emit('successful_ready', { isReady: true });
       io.to(lobby).emit('user_ready', savedLobby);
 
@@ -82,6 +75,7 @@ io.on("connection", (socket) => {
   socket.on('user_unready', async (data) => {
     const { username, lobby } = data;
 
+    // Find user and set isReady to false
     try {
       const savedLobby = await Lobby.findOneAndUpdate(
         { name: lobby, 'users.username': username },
@@ -100,8 +94,8 @@ io.on("connection", (socket) => {
     const { username, lobby } = data
 
     try {
-
       const lobbyObj = await Lobby.findOne({ name: lobby }).populate('problems').populate('host').exec()
+
       if (lobbyObj && lobbyObj.host.username === username) {
         lobbyObj.started = true
         lobbyObj.users = lobbyObj.users.map(user => ({ ...user, isReady: false }));
@@ -120,6 +114,7 @@ io.on("connection", (socket) => {
 
     try {
       const lobbyObj = await Lobby.findOne({ name: lobby }).populate('problems').exec()
+      // Increase round number and check if anymore rounds left
       if (lobbyObj) {
         lobbyObj.currentRound = lobbyObj.currentRound + 1
         const savedLobby = await lobbyObj.save()
@@ -143,8 +138,8 @@ io.on("connection", (socket) => {
         { $set: { 'users.$.isReady': true } }, // Update the 'isReady' field of the matched user
         { new: true }
       ).populate('problems').exec()
-      if (lobbyObj) {
 
+      if (lobbyObj) {
         const savedLobby = await lobbyObj.save()
         const currentProblem = await ProblemCode.findOne({ title: savedLobby.problems[savedLobby.currentRound].title, language: 'javascript' })
         if (savedLobby.users.every((user) => (user.isReady === true))) {
