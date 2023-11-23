@@ -29,7 +29,12 @@ const LobbySchema = new mongoose.Schema({
   started: {
     type: Boolean,
     default: false
-  }
+  },
+  leaderboard: [
+    {
+      type: Object
+    }
+  ]
 
 });
 

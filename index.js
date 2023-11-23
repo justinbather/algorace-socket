@@ -56,15 +56,6 @@ io.on("connection", (socket) => {
         { new: true }
       ).populate('problems').exec();
 
-      // For use between rounds
-      // Sets user status to ready
-      // if all users are ready we increase current round number and return new problem
-      //      if (savedLobby.users.every((user) => user.isReady === true) && savedLobby.started) {
-      //        savedLobby.roundNumber = savedLobby.roundNumber + 1
-      //        const updatedLobbyRound = await savedLobby.save()
-      //        const currentProblem = await ProblemCode.findOne({ title: savedLobby.problems[updatedLobbyRound.roundNumber].title, language: 'javascript' })
-      //        io.to(lobby).emit('new_round', { lobbyObj: updatedLobbyRound, roundNumber: savedLobby.roundNumber, currentProblem })
-      //      }
       socket.emit('successful_ready', { isReady: true });
       io.to(lobby).emit('user_ready', savedLobby);
 
@@ -115,6 +106,14 @@ io.on("connection", (socket) => {
 
     try {
       const lobbyObj = await Lobby.findOne({ name: lobby }).populate('problems').exec()
+      // create leaderboard object and add to array
+      const leaderboardItem = {
+        username,
+        problem: lobbyObj.problems[lobbyObj.currentRound].title
+      }
+      console.log(leaderboardItem)
+      lobbyObj.leaderboard.addToSet(leaderboardItem)
+      console.log(lobbyObj.leaderboard)
       // Increase round number and check if anymore rounds left
       if (lobbyObj) {
         lobbyObj.currentRound = lobbyObj.currentRound + 1
