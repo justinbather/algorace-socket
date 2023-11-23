@@ -31,8 +31,9 @@ io.on("connection", (socket) => {
         { name: lobby, 'users.username': { $ne: username } },
         { $addToSet: { users: { username, isReady: false } } },
         { new: true }
-      ).populate('problems').exec();
+      ).populate('problems').populate('host').exec();
 
+      console.log(result.host)
       if (result) {
         //add socket to lobby with lobby name
         socket.join(result.name);
