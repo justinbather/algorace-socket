@@ -118,9 +118,33 @@ io.on("connection", (socket) => {
       if (lobbyObj) {
         lobbyObj.currentRound = lobbyObj.currentRound + 1
         const savedLobby = await lobbyObj.save()
+        //Game complete
         if (savedLobby.numRounds < (savedLobby.currentRound + 1)) {
-          io.to(lobby).emit('game_completed')
+
+          //Game is complete so we need to calculate the winner
+          //Create a map and loop over our leaderboard, increasing the value for each win
+          //Thanks to my leetcode practice for this one
+          let map = new Map()
+          lobbyObj.leaderboard.forEach((user) => {
+            //Increase score by 1, if not in map we set to 0 then increment to 1
+            map.set(user.username, (map.get(user.username) || 0) + 1)
+
+          })
+
+          //Keep track of highest score with winner object
+          let winner = {
+            username,
+            score: 0
+          };
+          map.forEach((val, key) => {
+            if (val > winner.score) {
+              winner = { username: key, score: val }
+            }
+          })
+
+          io.to(lobby).emit('game_completed', { leaderboard: savedLobby.leaderboard, winner })
         } else {
+          // More rounds left
           io.to(lobby).emit('round_completed', ({ savedLobby, winner: username }))
         }
       }
