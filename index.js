@@ -54,7 +54,7 @@ io.on("connection", (socket) => {
         { name: lobby, 'users.username': username },
         { $set: { 'users.$.isReady': true } },
         { new: true }
-      ).populate('problems').exec();
+      ).populate('problems').populate('host').exec();
 
       socket.emit('successful_ready', { isReady: true });
       io.to(lobby).emit('user_ready', savedLobby);
@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
         { name: lobby, 'users.username': username },
         { $set: { 'users.$.isReady': false } },
         { new: true }
-      ).populate('problems');
+      ).populate('problems').populate('host');
 
       socket.emit('successful_ready', { isReady: false });
       io.to(lobby).emit('user_ready', savedLobby);
