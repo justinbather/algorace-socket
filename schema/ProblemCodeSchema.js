@@ -25,7 +25,9 @@ const ProblemCodeSchema = new mongoose.Schema({
   output: {
     type: String,
   },
-  description: String,
+  descriptions: [{
+    type: String,
+  }]
 });
 
 const ProblemCode = mongoose.model("Problem Code", ProblemCodeSchema);
